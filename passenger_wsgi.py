@@ -2,13 +2,11 @@ import os
 import sys
 from django.core.wsgi import get_wsgi_application
 
-# Adiciona o projeto ao path
-sys.path.insert(0, os.path.dirname(__file__))
+sys.path.insert(0, '/home/tecnologia/repositories/tossecheck_backend')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'tossecheck_backend.settings')
 
-# Carrega variáveis de ambiente
-from dotenv import load_dotenv
-load_dotenv()
-
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'tossecheck_web.settings')  # Ajuste o nome
+import pymysql
+pymysql.install_as_MySQLdb()
+pymysql.version_info = (2, 2, 1, 'final', 0)
 
 application = get_wsgi_application()
