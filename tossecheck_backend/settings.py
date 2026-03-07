@@ -2,7 +2,9 @@ import os
 from pathlib import Path
 from datetime import timedelta
 import environ
-
+import pymysql
+pymysql.install_as_MySQLdb()
+pymysql.version_info = (1, 1, 0, 'final', 0)
 # Caminho base do projeto (pasta onde está o manage.py)
 BASE_DIR = Path(__file__).resolve().parent.parent
 
