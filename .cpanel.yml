@@ -1,0 +1,9 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/tecnologia/repositories/tossecheck_backend/
+    - /bin/cp -R * $DEPLOYPATH
+    - source /home/tecnologia/virtualenv/repositories/tossecheck_backend/3.12/bin/activate
+    - pip install -r $DEPLOYPATH/requirements.txt
+    - python $DEPLOYPATH/manage.py migrate --noinput
+    - python $DEPLOYPATH/manage.py collectstatic --noinput
