@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Usuario, Pet, VideoPet
+from .models import Usuario, Pet, VideoPet, Veterinario
 
 @admin.register(Usuario)
 class UsuarioAdmin(admin.ModelAdmin):
@@ -24,3 +24,14 @@ class VideoPetAdmin(admin.ModelAdmin):
     list_filter = ('data_upload',)
     search_fields = ('pet_uuid', 'uuid')
     readonly_fields = ('uuid', 'data_upload')
+
+
+@admin.register(Veterinario)
+class VeterinarioAdmin(admin.ModelAdmin):
+    # Mostra a bolinha verde/vermelha e as datas na lista
+    list_display = ('nome', 'crmv', 'ativo', 'data_criacao')
+    # Cria um filtro lateral para buscar só os ativos ou inativos
+    list_filter = ('ativo', 'data_criacao')
+    search_fields = ('nome', 'crmv')
+    # Impede edição manual do uuid e das datas geradas pelo sistema
+    readonly_fields = ('uuid', 'data_criacao', 'data_alteracao')
