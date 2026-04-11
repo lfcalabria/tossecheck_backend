@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import views_tutor
 
 urlpatterns = [
     # ====== SINCRONIZAÇÃO (mobile/offline) ======
@@ -20,4 +21,12 @@ urlpatterns = [
     path("api/v1/pets/", views.api_pets, name="api_pets"),
     path("api/v1/pets/<uuid:pet_uuid>/", views.api_pet_detail, name="api_pet_detail"),
     path("api/v1/pets/<uuid:pet_uuid>/observacoes/", views.api_pet_observacao, name="api_pet_observacao"),
+
+    # ====== Tutor (Flutter) ======
+    path("api/v1/tutor/sync/usuario/", views_tutor.sync_usuario),
+    path("api/v1/tutor/sync/pet/", views_tutor.sync_pet),
+    path("api/v1/tutor/usuario/", views_tutor.tutor_status_por_cpf),
+
+    # ✅ NOVA ROTA: lista pets do tutor
+    path("api/v1/tutor/pets/", views_tutor.tutor_pets),
 ]
