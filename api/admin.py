@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Usuario, Pet, VideoPet, Veterinario
+from .models import *
 
 @admin.register(Usuario)
 class UsuarioAdmin(admin.ModelAdmin):
@@ -35,3 +35,10 @@ class VeterinarioAdmin(admin.ModelAdmin):
     search_fields = ('nome', 'crmv')
     # Impede edição manual do uuid e das datas geradas pelo sistema
     readonly_fields = ('uuid', 'data_criacao', 'data_alteracao')
+
+@admin.register(VideoClassificacao)
+class VideoClassificacaoAdmin(admin.ModelAdmin):
+    list_display = ['uuid', 'video_uuid', 'tipo_som', 'fator', 'estridor', 'estertor', 'data_cadastro']
+    list_filter = ['tipo_som', 'fator', 'estridor', 'estertor']
+    search_fields = ['video_uuid', 'veterinario_uuid', 'obs']
+    readonly_fields = ['uuid', 'data_cadastro']

@@ -27,6 +27,10 @@ urlpatterns = [
     path("api/v1/tutor/sync/pet/", views_tutor.sync_pet),
     path("api/v1/tutor/usuario/", views_tutor.tutor_status_por_cpf),
 
-    # ✅ NOVA ROTA: lista pets do tutor
+    # ✅ lista pets do tutor
     path("api/v1/tutor/pets/", views_tutor.tutor_pets),
-]
+
+    # ====== CLASSIFICAÇÃO DE VÍDEO ======
+    path("api/v1/video/<uuid:video_uuid>/", views.api_video_detalhe, name="api_video_detalhe"),
+    path("api/v1/video/<uuid:video_uuid>/classificacoes/", views.api_video_classificacoes, name="video_classificacoes"),
+    path("api/v1/video/classificacao/", views.api_criar_classificacao, name="criar_classificacao"),]

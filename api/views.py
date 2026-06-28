@@ -8,8 +8,7 @@ from django.db import IntegrityError
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
-from .models import Usuario, Pet, VideoPet, Veterinario, Observacao
-
+from .models import *
 
 # ============================================================
 # UTILITÁRIOS
@@ -444,7 +443,8 @@ def api_pet_detail(request, pet_uuid):
                 "uuid": str(o.uuid),
                 "texto": o.mensagem,
                 "data": o.data_cadastro.strftime("%d/%m/%Y %H:%M"),
-                "veterinario": o.veterinario.nome
+                "veterinario": o.veterinario.nome,
+                "automatica": o.automatica
             } for o in observacoes
         ]
     }, status=200)
@@ -487,3 +487,127 @@ def api_pet_observacao(request, pet_uuid):
         return JsonResponse({"erro": "JSON inválido."}, status=400)
     except Exception as e:
         return JsonResponse({"erro": str(e)}, status=400)
+@csrf_exempt
+def api_video_detalhe(request, video_uuid):
+    """GET /api/v1/video/<uuid>/ — retorna detalhes do vídeo (url, data_upload, pet_uuid)"""
+    if request.method != 'GET':
+        return JsonResponse({'erro': 'Método não permitido'}, status=405)
+    try:
+        video = VideoPet.objects.get(uuid=video_uuid)
+        return JsonResponse({
+            'uuid': str(video.uuid),
+            'pet_uuid': video.pet_uuid,
+            'url': video.arquivo.url,
+            'data_upload': video.data_upload.strftime("%d/%m/%Y %H:%M") if video.data_upload else "",
+        }, status=200)
+    except VideoPet.DoesNotExist:
+        return JsonResponse({'erro': 'Vídeo não encontrado'}, status=404)
+    except Exception as e:
+        return JsonResponse({'erro': f'Erro interno: {str(e)}'}, status=400)
+
+@csrf_exempt
+def api_video_classificacoes(request, video_uuid):
+    """GET /api/v1/video/<uuid>/classificacoes/ — retorna classificações de um vídeo"""
+    if request.method != 'GET':
+        return JsonResponse({'erro': 'Método não permitido'}, status=405)
+    try:
+        classificacoes = VideoClassificacao.objects.filter(video_uuid=video_uuid).order_by('-data_cadastro')
+        dados = []
+        for c in classificacoes:
+            dados.append({
+                'uuid': str(c.uuid),
+                'video_uuid': c.video_uuid,
+                'duracao': c.duracao,
+                'tipo_som': c.tipo_som,
+                'fator': c.fator,
+                'estridor': c.estridor,
+                'estertor': c.estertor,
+                'obs': c.obs,
+                'veterinario_uuid': c.veterinario_uuid,
+                'data_cadastro': c.data_cadastro.strftime("%d/%m/%Y %H:%M"),
+            })
+        return JsonResponse({'classificacoes': dados}, status=200)
+    except Exception as e:
+        return JsonResponse({'erro': f'Erro interno: {str(e)}'}, status=400)
+
+@csrf_exempt
+def api_criar_classificacao(request):
+    """POST /api/v1/video/classificacao/ — cria classificação + observação automática"""
+    if request.method != 'POST':
+        return JsonResponse({'erro': 'Método não permitido'}, status=405)
+    try:
+        data = json.loads(request.body or "{}")
+        video_uuid = data.get('video_uuid')
+        if not video_uuid:
+            return JsonResponse({'erro': 'video_uuid é obrigatório'}, status=400)
+
+        # Cria a classificação
+        classificacao = VideoClassificacao.objects.create(
+            video_uuid=video_uuid,
+            duracao=data.get('duracao', ''),
+            tipo_som=data.get('tipo_som', ''),
+            fator=data.get('fator', ''),
+            estridor=data.get('estridor', False),
+            estertor=data.get('estertor', False),
+            obs=data.get('obs', ''),
+            automatica=True,
+            veterinario_uuid=data.get('veterinario_uuid', ''),
+        )
+
+        # Busca o vídeo para descobrir o pet_uuid e data de gravação
+        pet_uuid = None
+        data_gravacao = "data desconhecida"
+        try:
+            video = VideoPet.objects.get(uuid=video_uuid)
+            pet_uuid = video.pet_uuid
+            data_gravacao = video.data_upload.strftime("%d/%m/%Y %H:%M") if video.data_upload else "data desconhecida"
+        except VideoPet.DoesNotExist:
+            pass
+
+        # Mapeia valores para exibição na observação
+        duracao_map = {
+            'aguda': 'Aguda (<3s)',
+            'subaguda': 'Subaguda (3-8s)',
+            'cronica': 'Crônica (>8s)',
+        }
+        tipo_map = {
+            'aspera_alta': 'Áspera/Alta',
+            'ganso': 'Ganso',
+            'sibilante': 'Sibilante',
+            'suave_inspiracao': 'Suave com Inspiração',
+            'engasgo_degluticao': 'Engasgo/Deglutição Final',
+        }
+
+        estridor_texto = "Sim" if classificacao.estridor else "Não"
+        estertor_texto = "Sim" if classificacao.estertor else "Não"
+        obs_texto = classificacao.obs or "Sem observações"
+
+        duracao_exib = duracao_map.get(classificacao.duracao, classificacao.duracao)
+        tipo_exib = tipo_map.get(classificacao.tipo_som, classificacao.tipo_som)
+
+        mensagem = (
+            f"O vídeo gravado em {data_gravacao} foi classificado como uma tosse de duração "
+            f"{duracao_exib}, o tipo de som é {tipo_exib} gerado por "
+            f"{classificacao.fator}; Estridor: {estridor_texto}, Ester tor: {estertor_texto}, "
+            f"{obs_texto}"
+        )
+
+        # Cria a observação automática
+        if pet_uuid and data.get('veterinario_uuid'):
+            try:
+                vet = Veterinario.objects.get(uuid=data['veterinario_uuid'])
+                Observacao.objects.create(
+                    pet_uuid=pet_uuid,
+                    veterinario=vet,
+                    mensagem=mensagem,
+                )
+            except (Veterinario.DoesNotExist, ValueError):
+                pass
+
+        return JsonResponse({'uuid': str(classificacao.uuid)}, status=201)
+
+    except json.JSONDecodeError:
+        return JsonResponse({'erro': 'Formato de dados inválido.'}, status=400)
+    except Exception as e:
+        return JsonResponse({'erro': f'Erro interno: {str(e)}'}, status=400)
+

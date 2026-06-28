@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Usuario, Pet, VideoPet, Veterinario, Observacao
+from .models import *
 
 class UsuarioSerializer(serializers.ModelSerializer):
     class Meta:
@@ -34,4 +34,11 @@ class ObservacaoSerializer(serializers.ModelSerializer):
         model = Observacao
         fields = ['id', 'uuid', 'pet_uuid', 'veterinario', 'veterinario_nome',
                   'mensagem', 'data_cadastro']
+        read_only_fields = ['id', 'uuid', 'data_cadastro']
+
+class VideoClassificacaoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VideoClassificacao
+        fields = ['id', 'uuid', 'video_uuid', 'duracao', 'tipo_som', 'fator',
+                  'estridor', 'estertor', 'obs', 'veterinario_uuid', 'data_cadastro']
         read_only_fields = ['id', 'uuid', 'data_cadastro']

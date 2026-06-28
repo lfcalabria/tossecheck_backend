@@ -55,7 +55,25 @@ class Observacao(models.Model):
     pet_uuid = models.CharField(max_length=100)
     veterinario = models.ForeignKey(Veterinario, on_delete=models.CASCADE)
     mensagem = models.TextField(help_text="Diagnóstico ou observação sobre a tosse")
+    automatica = models.BooleanField(default=False)
     data_cadastro = models.DateTimeField(auto_now_add=True)
+    data_alteracao = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"Obs do Dr(a). {self.veterinario.nome} em {self.data_cadastro.strftime('%d/%m/%Y')}"
+
+class VideoClassificacao(models.Model):
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    video_uuid = models.CharField(max_length=100)
+    duracao = models.CharField(max_length=15)
+    tipo_som = models.CharField(max_length=15)
+    fator = models.CharField(max_length=25)
+    estridor = models.BooleanField(default=False)
+    estertor = models.BooleanField(default=False)
+    obs = models.TextField(null=True, blank=True)
+    veterinario_uuid = models.CharField(max_length=100)
+    data_cadastro = models.DateTimeField(auto_now_add=True)
+    data_alteracao = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Classificação {self.uuid} - Vídeo {self.video_uuid}"
