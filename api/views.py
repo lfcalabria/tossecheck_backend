@@ -7,7 +7,12 @@ from datetime import datetime
 from django.db import IntegrityError
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth.hashers import check_password
 
+import secrets
+from datetime import timedelta
+from django.utils import timezone
+from django.contrib.auth.hashers import make_password
 from .models import *
 
 # ============================================================
@@ -221,7 +226,7 @@ def api_login(request):
         except Veterinario.DoesNotExist:
             return JsonResponse({'erro': 'CRMV não encontrado ou inativo.'}, status=404)
 
-        if senha != vet.senha:
+        if not check_password(senha, vet.senha):
             return JsonResponse({'erro': 'Senha incorreta.'}, status=401)
 
         return JsonResponse({
@@ -611,3 +616,96 @@ def api_criar_classificacao(request):
     except Exception as e:
         return JsonResponse({'erro': f'Erro interno: {str(e)}'}, status=400)
 
+@csrf_exempt
+def api_esqueci_senha(request):
+    """POST /api/v1/esqueci-senha/ — recebe CRMV, gera token e retorna o link"""
+    if request.method != 'POST':
+        return JsonResponse({'erro': 'Método não permitido.'}, status=405)
+
+    try:
+        data = json.loads(request.body or "{}")
+        crmv = (data.get('crmv') or '').strip()
+
+        if not crmv:
+            return JsonResponse({'erro': 'CRMV é obrigatório.'}, status=400)
+
+        try:
+            vet = Veterinario.objects.get(crmv=crmv, ativo=True)
+        except Veterinario.DoesNotExist:
+            # Não revela se o CRMV existe ou não (segurança)
+            return JsonResponse({'mensagem': 'Se o CRMV estiver cadastrado, você receberá um link de redefinição no email cadastrado.'}, status=200)
+
+        # Gera token seguro
+        token = secrets.token_urlsafe(32)
+        expiracao = timezone.now() + timedelta(hours=1)
+
+        # Invalida tokens anteriores do mesmo veterinário
+        RedefinicaoSenhaToken.objects.filter(
+            veterinario=vet, usado=False
+        ).update(usado=True)
+
+        # Cria novo token
+        RedefinicaoSenhaToken.objects.create(
+            veterinario=vet,
+            token=token,
+            expira_em=expiracao
+        )
+
+        # Monta link de redefinição
+        link = f"https://portal.tecnologiasinternet.com.br/portal/redefinir-senha/?token={token}"
+
+        # TODO: Enviar email com o link
+        # Por enquanto, retorna o link direto (apenas para desenvolvimento)
+        print(f"[ESQUECI SENHA] CRMV: {crmv} - Link: {link}")
+
+        return JsonResponse({
+            'mensagem': 'Se o CRMV estiver cadastrado, você receberá um link de redefinição no email cadastrado.',
+            'link': link  # REMOVA em produção
+        }, status=200)
+
+    except json.JSONDecodeError:
+        return JsonResponse({'erro': 'Formato de dados inválido.'}, status=400)
+    except Exception as e:
+        return JsonResponse({'erro': f'Erro interno: {str(e)}'}, status=400)
+
+@csrf_exempt
+def api_redefinir_senha(request):
+    """POST /api/v1/redefinir-senha/ — recebe token + nova senha, atualiza"""
+    if request.method != 'POST':
+        return JsonResponse({'erro': 'Método não permitido.'}, status=405)
+
+    try:
+        data = json.loads(request.body or "{}")
+        token = (data.get('token') or '').strip()
+        nova_senha = data.get('nova_senha')
+
+        if not token or not nova_senha:
+            return JsonResponse({'erro': 'Token e nova senha são obrigatórios.'}, status=400)
+
+        if len(nova_senha) < 6:
+            return JsonResponse({'erro': 'A senha deve ter no mínimo 6 caracteres.'}, status=400)
+
+        try:
+            registro = RedefinicaoSenhaToken.objects.get(token=token, usado=False)
+        except RedefinicaoSenhaToken.DoesNotExist:
+            return JsonResponse({'erro': 'Token inválido ou já utilizado.'}, status=400)
+
+        if timezone.now() > registro.expira_em:
+            registro.usado = True
+            registro.save(update_fields=['usado'])
+            return JsonResponse({'erro': 'Token expirado. Solicite uma nova redefinição.'}, status=400)
+
+        # Atualiza a senha com hash
+        vet = registro.veterinario
+        vet.set_senha(nova_senha)
+
+        # Marca token como usado
+        registro.usado = True
+        registro.save(update_fields=['usado'])
+
+        return JsonResponse({'mensagem': 'Senha redefinida com sucesso.'}, status=200)
+
+    except json.JSONDecodeError:
+        return JsonResponse({'erro': 'Formato de dados inválido.'}, status=400)
+    except Exception as e:
+        return JsonResponse({'erro': f'Erro interno: {str(e)}'}, status=400)

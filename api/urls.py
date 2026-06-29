@@ -33,4 +33,9 @@ urlpatterns = [
     # ====== CLASSIFICAÇÃO DE VÍDEO ======
     path("api/v1/video/<uuid:video_uuid>/", views.api_video_detalhe, name="api_video_detalhe"),
     path("api/v1/video/<uuid:video_uuid>/classificacoes/", views.api_video_classificacoes, name="video_classificacoes"),
-    path("api/v1/video/classificacao/", views.api_criar_classificacao, name="criar_classificacao"),]
+    path("api/v1/video/classificacao/", views.api_criar_classificacao, name="criar_classificacao"),
+
+    # ====== ESQUECI MINHA SENHA ======
+    path("api/v1/esqueci-senha/", views.api_esqueci_senha, name="api_esqueci_senha"),
+    path("api/v1/redefinir-senha/", views.api_redefinir_senha, name="api_redefinir_senha"),
+]

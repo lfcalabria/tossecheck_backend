@@ -1,6 +1,6 @@
 import uuid
 from django.db import models
-
+from django.contrib.auth.hashers import make_password
 
 class Usuario(models.Model):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
@@ -46,9 +46,23 @@ class Veterinario(models.Model):
     data_criacao = models.DateTimeField(auto_now_add=True)
     data_alteracao = models.DateTimeField(auto_now=True)
 
+    def set_senha(self, senha_plana):
+        self.senha = make_password(senha_plana)
+        self.save(update_fields=['senha'])
+
     def __str__(self):
         return f"Dr(a). {self.nome} - CRMV: {self.crmv}"
 
+class RedefinicaoSenhaToken(models.Model):
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    veterinario = models.ForeignKey(Veterinario, on_delete=models.CASCADE)
+    token = models.CharField(max_length=100, unique=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    expira_em = models.DateTimeField()
+    usado = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"Token {self.token[:8]}... - {self.veterinario.nome}"
 
 class Observacao(models.Model):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
