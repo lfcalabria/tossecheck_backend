@@ -38,4 +38,7 @@ urlpatterns = [
     # ====== ESQUECI MINHA SENHA ======
     path("api/v1/esqueci-senha/", views.api_esqueci_senha, name="api_esqueci_senha"),
     path("api/v1/redefinir-senha/", views.api_redefinir_senha, name="api_redefinir_senha"),
+
+    # ====== EDITAR OBSERVAÇÃO ======
+    path("api/v1/pets/<uuid:pet_uuid>/observacoes/<uuid:obs_uuid>/", views.api_editar_observacao, name="api_editar_observacao"),
 ]

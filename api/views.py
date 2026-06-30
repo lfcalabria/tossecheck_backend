@@ -13,6 +13,8 @@ import secrets
 from datetime import timedelta
 from django.utils import timezone
 from django.contrib.auth.hashers import make_password
+from django.conf import settings
+from django.core.mail import send_mail
 from .models import *
 
 # ============================================================
@@ -449,8 +451,17 @@ def api_pet_detail(request, pet_uuid):
                 "texto": o.mensagem,
                 "data": o.data_cadastro.strftime("%d/%m/%Y %H:%M"),
                 "veterinario": o.veterinario.nome,
-                "automatica": o.automatica
-            } for o in observacoes
+                "veterinario_uuid": str(o.veterinario.uuid),
+                "automatica": o.automatica,
+                "historico": [
+                    {
+                        "texto_original": h.mensagem_original,
+                        "data_alteracao": h.data_criacao.strftime("%d/%m/%Y %H:%M"),
+                    }
+                    for h in ObservacaoHistorico.objects.filter(observacao=o).order_by("-data_criacao")
+                ],
+            }
+            for o in observacoes
         ]
     }, status=200)
 
@@ -657,6 +668,17 @@ def api_esqueci_senha(request):
         # TODO: Enviar email com o link
         # Por enquanto, retorna o link direto (apenas para desenvolvimento)
         print(f"[ESQUECI SENHA] CRMV: {crmv} - Link: {link}")
+                # Envia o email com o link de redefinição
+        try:
+            send_mail(
+                'Redefinição de Senha - TosseCheck',
+                f'Olá {vet.nome},\n\nVocê solicitou a redefinição de senha do TosseCheck.\n\nClique no link abaixo para redefinir sua senha:\n{link}\n\nEste link expira em 1 hora.\n\nSe você não solicitou esta redefinição, ignore este email.\n\nAtenciosamente,\nEquipe TosseCheck',
+                settings.DEFAULT_FROM_EMAIL,
+                [vet.email],
+                fail_silently=False,
+            )
+        except Exception as e:
+            print(f"[ERRO ENVIO EMAIL] CRMV: {crmv} - Erro: {str(e)}")
 
         return JsonResponse({
             'mensagem': 'Se o CRMV estiver cadastrado, você receberá um link de redefinição no email cadastrado.',
@@ -709,3 +731,51 @@ def api_redefinir_senha(request):
         return JsonResponse({'erro': 'Formato de dados inválido.'}, status=400)
     except Exception as e:
         return JsonResponse({'erro': f'Erro interno: {str(e)}'}, status=400)
+
+
+@csrf_exempt
+def api_editar_observacao(request, pet_uuid, obs_uuid):
+    if request.method != "PUT":
+        return JsonResponse({"erro": "Método não permitido."}, status=405)
+
+    try:
+        data = json.loads(request.body or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"erro": "JSON inválido."}, status=400)
+
+    texto_novo = (data.get("texto") or "").strip()
+    vet_uuid = data.get("veterinario_uuid")
+
+    if not texto_novo:
+        return JsonResponse({"erro": "Observação vazia."}, status=400)
+    if not vet_uuid:
+        return JsonResponse({"erro": "veterinario_uuid obrigatório."}, status=400)
+
+    try:
+        obs = Observacao.objects.get(uuid=obs_uuid, pet_uuid=pet_uuid)
+    except Observacao.DoesNotExist:
+        return JsonResponse({"erro": "Observação não encontrada."}, status=404)
+
+    # Verifica se o veterinário logado é o dono da observação
+    if str(obs.veterinario.uuid) != vet_uuid:
+        return JsonResponse({"erro": "Você só pode alterar suas próprias observações."}, status=403)
+
+    # Se o texto é o mesmo, não faz nada
+    if obs.mensagem == texto_novo:
+        return JsonResponse({"uuid": str(obs.uuid), "texto": obs.mensagem, "alterado": False})
+
+    # Salva o original no histórico
+    ObservacaoHistorico.objects.create(
+        observacao=obs,
+        mensagem_original=obs.mensagem,
+    )
+
+    # Atualiza a observação
+    obs.mensagem = texto_novo
+    obs.save(update_fields=["mensagem"])
+
+    return JsonResponse({
+        "uuid": str(obs.uuid),
+        "texto": obs.mensagem,
+        "alterado": True
+    })

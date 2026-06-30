@@ -76,6 +76,15 @@ class Observacao(models.Model):
     def __str__(self):
         return f"Obs do Dr(a). {self.veterinario.nome} em {self.data_cadastro.strftime('%d/%m/%Y')}"
 
+class ObservacaoHistorico(models.Model):
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    observacao = models.ForeignKey(Observacao, on_delete=models.CASCADE, related_name="historico")
+    mensagem_original = models.TextField()
+    data_criacao = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Histórico de {self.observacao.uuid} - {self.data_criacao.strftime('%d/%m/%Y %H:%M')}"
+
 class VideoClassificacao(models.Model):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     video_uuid = models.CharField(max_length=100)

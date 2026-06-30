@@ -42,3 +42,16 @@ class VideoClassificacaoAdmin(admin.ModelAdmin):
     list_filter = ['tipo_som', 'fator', 'estridor', 'estertor']
     search_fields = ['video_uuid', 'veterinario_uuid', 'obs']
     readonly_fields = ['uuid', 'data_cadastro']
+
+@admin.register(ObservacaoHistorico)
+class ObservacaoHistoricoAdmin(admin.ModelAdmin):
+    list_display = ('uuid', 'observacao', 'data_criacao')
+    search_fields = ('observacao__uuid', 'mensagem_original')
+    readonly_fields = ('uuid', 'data_criacao')
+
+@admin.register(Observacao)
+class ObservacaoAdmin(admin.ModelAdmin):
+    list_display = ('uuid', 'pet_uuid', 'veterinario', 'data_cadastro', 'automatica')
+    list_filter = ('automatica', 'data_cadastro')
+    search_fields = ('pet_uuid', 'mensagem')
+    readonly_fields = ('uuid', 'data_cadastro', 'data_alteracao')
