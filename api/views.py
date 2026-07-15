@@ -566,7 +566,6 @@ def api_criar_classificacao(request):
             estridor=data.get('estridor', False),
             estertor=data.get('estertor', False),
             obs=data.get('obs', ''),
-            automatica=True,
             veterinario_uuid=data.get('veterinario_uuid', ''),
         )
 
