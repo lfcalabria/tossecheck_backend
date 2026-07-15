@@ -89,7 +89,7 @@ class VideoClassificacao(models.Model):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     video_uuid = models.CharField(max_length=100)
     duracao = models.CharField(max_length=15)
-    tipo_som = models.CharField(max_length=15)
+    tipo_som = models.CharField(max_length=50)
     fator = models.CharField(max_length=25)
     estridor = models.BooleanField(default=False)
     estertor = models.BooleanField(default=False)
